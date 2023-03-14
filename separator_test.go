@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package spanner
+package gsqlsep
 
 import (
 	"testing"
@@ -286,7 +286,7 @@ func TestSeparatorConsumeRawBytesString(t *testing.T) {
 	}
 }
 
-func TestSeparateInput(t *testing.T) {
+func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 	const (
 		terminatorHorizontal = `;`
 		terminatorVertical   = `\G`
@@ -295,193 +295,193 @@ func TestSeparateInput(t *testing.T) {
 	for _, tt := range []struct {
 		desc  string
 		input string
-		want  []inputStatement
+		want  []InputStatement
 	}{
 		{
 			desc:  "single query",
 			input: `SELECT "123";`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT "123"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT "123"`,
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  "double queries",
 			input: `SELECT "123"; SELECT "456";`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT "123"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT "123"`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  `SELECT "456"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT "456"`,
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  "quoted identifier",
 			input: "SELECT `1`, `2`; SELECT `3`, `4`;",
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  "SELECT `1`, `2`",
-					terminator: terminatorHorizontal,
+					Statement:  "SELECT `1`, `2`",
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  "SELECT `3`, `4`",
-					terminator: terminatorHorizontal,
+					Statement:  "SELECT `3`, `4`",
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  "vertical terminator",
 			input: `SELECT "123"\G`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT "123"`,
-					terminator: terminatorVertical,
+					Statement:  `SELECT "123"`,
+					Terminator: terminatorVertical,
 				},
 			},
 		},
 		{
 			desc:  "mixed terminator",
 			input: `SELECT "123"; SELECT "456"\G SELECT "789";`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT "123"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT "123"`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  `SELECT "456"`,
-					terminator: terminatorVertical,
+					Statement:  `SELECT "456"`,
+					Terminator: terminatorVertical,
 				},
 				{
-					statement:  `SELECT "789"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT "789"`,
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  "sql query",
 			input: `SELECT * FROM t1 WHERE id = "123" AND "456"; DELETE FROM t2 WHERE true;`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT * FROM t1 WHERE id = "123" AND "456"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT * FROM t1 WHERE id = "123" AND "456"`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  `DELETE FROM t2 WHERE true`,
-					terminator: terminatorHorizontal,
+					Statement:  `DELETE FROM t2 WHERE true`,
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  "second query is empty",
 			input: `SELECT 1; ;`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT 1`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT 1`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  ``,
-					terminator: terminatorHorizontal,
+					Statement:  ``,
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  "new line just after terminator",
 			input: "SELECT 1;\n SELECT 2\\G\n",
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT 1`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT 1`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  `SELECT 2`,
-					terminator: terminatorVertical,
+					Statement:  `SELECT 2`,
+					Terminator: terminatorVertical,
 				},
 			},
 		},
 		{
 			desc:  "horizontal terminatoriter in string",
 			input: `SELECT "1;2;3"; SELECT 'TL;DR';`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT "1;2;3"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT "1;2;3"`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  `SELECT 'TL;DR'`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT 'TL;DR'`,
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  `vertical terminatoriter in string`,
 			input: `SELECT r"1\G2\G3"\G SELECT r'4\G5\G6'\G`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT r"1\G2\G3"`,
-					terminator: terminatorVertical,
+					Statement:  `SELECT r"1\G2\G3"`,
+					Terminator: terminatorVertical,
 				},
 				{
-					statement:  `SELECT r'4\G5\G6'`,
-					terminator: terminatorVertical,
+					Statement:  `SELECT r'4\G5\G6'`,
+					Terminator: terminatorVertical,
 				},
 			},
 		},
 		{
 			desc:  "terminatoriter in quoted identifier",
 			input: "SELECT `1;2`; SELECT `3;4`;",
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  "SELECT `1;2`",
-					terminator: terminatorHorizontal,
+					Statement:  "SELECT `1;2`",
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  "SELECT `3;4`",
-					terminator: terminatorHorizontal,
+					Statement:  "SELECT `3;4`",
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  `query has new line just before terminatoriter`,
 			input: "SELECT '123'\n; SELECT '456'\n\\G",
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT '123'`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT '123'`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  `SELECT '456'`,
-					terminator: terminatorVertical,
+					Statement:  `SELECT '456'`,
+					Terminator: terminatorVertical,
 				},
 			},
 		},
 		{
 			desc:  `DDL`,
 			input: "CREATE t1 (\nId INT64 NOT NULL\n) PRIMARY KEY (Id);",
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  "CREATE t1 (\nId INT64 NOT NULL\n) PRIMARY KEY (Id)",
-					terminator: terminatorHorizontal,
+					Statement:  "CREATE t1 (\nId INT64 NOT NULL\n) PRIMARY KEY (Id)",
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
 		{
 			desc:  `statement with multiple comments`,
 			input: "# comment;\nSELECT /* comment */ 1; --comment\nSELECT 2;/* comment */",
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  "SELECT  1",
-					terminator: terminatorHorizontal,
+					Statement:  "SELECT  1",
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  "SELECT 2",
-					terminator: terminatorHorizontal,
+					Statement:  "SELECT 2",
+					Terminator: terminatorHorizontal,
 				},
 			},
 		},
@@ -493,31 +493,182 @@ func TestSeparateInput(t *testing.T) {
 		{
 			desc:  `second query ends in the middle of string`,
 			input: `SELECT "123"; SELECT "45`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `SELECT "123"`,
-					terminator: terminatorHorizontal,
+					Statement:  `SELECT "123"`,
+					Terminator: terminatorHorizontal,
 				},
 				{
-					statement:  `SELECT "45`,
-					terminator: terminatorUndefined,
+					Statement:  `SELECT "45`,
+					Terminator: terminatorUndefined,
 				},
 			},
 		},
 		{
 			desc:  `totally incorrect query`,
 			input: `a"""""""""'''''''''b`,
-			want: []inputStatement{
+			want: []InputStatement{
 				{
-					statement:  `a"""""""""'''''''''b`,
-					terminator: terminatorUndefined,
+					Statement:  `a"""""""""'''''''''b`,
+					Terminator: terminatorUndefined,
 				},
 			},
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			got := separateInput(tt.input, `\G`)
-			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(inputStatement{})); diff != "" {
+			got := SeparateInput(tt.input, `\G`)
+			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(InputStatement{})); diff != "" {
+				t.Errorf("difference in statements: (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
+	const (
+		terminatorHorizontal = `;`
+		terminatorVertical   = `\G`
+		terminatorUndefined  = ``
+	)
+	for _, tt := range []struct {
+		desc  string
+		input string
+		want  []string
+	}{
+		{
+			desc:  "single query",
+			input: `SELECT "123";`,
+			want: []string{
+				`SELECT "123"`,
+			},
+		},
+		{
+			desc:  "double queries",
+			input: `SELECT "123"; SELECT "456";`,
+			want: []string{
+				`SELECT "123"`,
+				`SELECT "456"`,
+			},
+		},
+		{
+			desc:  "quoted identifier",
+			input: "SELECT `1`, `2`; SELECT `3`, `4`;",
+			want: []string{
+				"SELECT `1`, `2`",
+				"SELECT `3`, `4`",
+			},
+		},
+		{
+			desc:  "vertical terminator",
+			input: `SELECT "123"\G`,
+			want: []string{
+				`SELECT "123"`,
+			},
+		},
+		{
+			desc:  "mixed terminator",
+			input: `SELECT "123"; SELECT "456"\G SELECT "789";`,
+			want: []string{
+				`SELECT "123"`,
+				`SELECT "456"`,
+				`SELECT "789"`,
+			},
+		},
+		{
+			desc:  "sql query",
+			input: `SELECT * FROM t1 WHERE id = "123" AND "456"; DELETE FROM t2 WHERE true;`,
+			want: []string{
+				`SELECT * FROM t1 WHERE id = "123" AND "456"`,
+				`DELETE FROM t2 WHERE true`,
+			},
+		},
+		{
+			desc:  "second query is empty",
+			input: `SELECT 1; ;`,
+			want: []string{
+				`SELECT 1`,
+				``,
+			},
+		},
+		{
+			desc:  "new line just after terminator",
+			input: "SELECT 1;\n SELECT 2\\G\n",
+			want: []string{
+				`SELECT 1`,
+				`SELECT 2`,
+			},
+		},
+		{
+			desc:  "horizontal terminatoriter in string",
+			input: `SELECT "1;2;3"; SELECT 'TL;DR';`,
+			want: []string{
+				`SELECT "1;2;3"`,
+				`SELECT 'TL;DR'`,
+			},
+		},
+		{
+			desc:  `vertical terminatoriter in string`,
+			input: `SELECT r"1\G2\G3"\G SELECT r'4\G5\G6'\G`,
+			want: []string{
+				`SELECT r"1\G2\G3"`,
+				`SELECT r'4\G5\G6'`,
+			},
+		},
+		{
+			desc:  "terminatoriter in quoted identifier",
+			input: "SELECT `1;2`; SELECT `3;4`;",
+			want: []string{
+				"SELECT `1;2`",
+				"SELECT `3;4`",
+			},
+		},
+		{
+			desc:  `query has new line just before terminatoriter`,
+			input: "SELECT '123'\n; SELECT '456'\n\\G",
+			want: []string{
+				`SELECT '123'`,
+				`SELECT '456'`,
+			},
+		},
+		{
+			desc:  `DDL`,
+			input: "CREATE t1 (\nId INT64 NOT NULL\n) PRIMARY KEY (Id);",
+			want: []string{
+				"CREATE t1 (\nId INT64 NOT NULL\n) PRIMARY KEY (Id)",
+			},
+		},
+		{
+			desc:  `statement with multiple comments`,
+			input: "# comment;\nSELECT /* comment */ 1; --comment\nSELECT 2;/* comment */",
+			want: []string{
+				"SELECT  1",
+				"SELECT 2",
+			},
+		},
+		{
+			desc:  `only comments`,
+			input: "# comment;\n/* comment */--comment\n/* comment */",
+			want:  nil,
+		},
+		{
+			desc:  `second query ends in the middle of string`,
+			input: `SELECT "123"; SELECT "45`,
+			want: []string{
+				`SELECT "123"`,
+				`SELECT "45`,
+			},
+		},
+		{
+			desc:  `totally incorrect query`,
+			input: `a"""""""""'''''''''b`,
+			want: []string{
+				`a"""""""""'''''''''b`,
+			},
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			got := SeparateInputString(tt.input, `\G`)
+			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(InputStatement{})); diff != "" {
 				t.Errorf("difference in statements: (-want +got):\n%s", diff)
 			}
 		})
