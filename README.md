@@ -10,7 +10,8 @@ This is experimental and provided without warranty of any kind.
 
 - Separate statements without syntax parsing.
   - Query syntax changes will not break user codes.
-  - It is conceptually an implementation of the [Google SQL lexical structure](https://github.com/google/zetasql/blob/master/docs/lexical.md).
+  - It is conceptually a partial implementation of the [Google SQL lexical structure](https://github.com/google/zetasql/blob/master/docs/lexical.md).
+    -  See: [Quoted identifiers](https://github.com/google/zetasql/blob/master/docs/lexical.md#quoted-identifiers), [String and bytes literals](https://github.com/google/zetasql/blob/master/docs/lexical.md#string-and-bytes-literals), [Terminating semicolons](https://github.com/google/zetasql/blob/master/docs/lexical.md#terminating-semicolons), [Comments](https://github.com/google/zetasql/blob/master/docs/lexical.md#comments)
 - Strip comments to support Cloud Spanner Admin API, which doesn't support comments in DDL.
   - (Experimental) Can preserve comments using `SeparateInputPreserveComments`, `SeparateInputStringPreserveComments`.
 - (Experimental) Alternative termination characters are customizable.
