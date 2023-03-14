@@ -79,7 +79,7 @@ func TestSeparatorSkipComments(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			s := newSeparator(tt.str, nil)
+			s := newSeparator(tt.str, false, nil)
 			s.skipComments()
 
 			remained := string(s.str)
@@ -147,7 +147,7 @@ func TestSeparatorConsumeString(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			s := newSeparator(tt.str, nil)
+			s := newSeparator(tt.str, false, nil)
 			s.consumeString()
 
 			got := s.sb.String()
@@ -190,7 +190,7 @@ func TestSeparatorConsumeRawString(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			s := newSeparator(tt.str, nil)
+			s := newSeparator(tt.str, false, nil)
 			s.consumeRawString()
 
 			got := s.sb.String()
@@ -233,7 +233,7 @@ func TestSeparatorConsumeBytesString(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			s := newSeparator(tt.str, nil)
+			s := newSeparator(tt.str, false, nil)
 			s.consumeBytesString()
 
 			got := s.sb.String()
@@ -270,7 +270,7 @@ func TestSeparatorConsumeRawBytesString(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			s := newSeparator(tt.str, nil)
+			s := newSeparator(tt.str, false, nil)
 			s.consumeRawBytesString()
 
 			got := s.sb.String()
@@ -406,7 +406,7 @@ func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  "horizontal terminatoriter in string",
+			desc:  "horizontal terminator in string",
 			input: `SELECT "1;2;3"; SELECT 'TL;DR';`,
 			want: []InputStatement{
 				{
@@ -420,7 +420,7 @@ func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  `vertical terminatoriter in string`,
+			desc:  `vertical terminator in string`,
 			input: `SELECT r"1\G2\G3"\G SELECT r'4\G5\G6'\G`,
 			want: []InputStatement{
 				{
@@ -434,7 +434,7 @@ func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  "terminatoriter in quoted identifier",
+			desc:  "terminator in quoted identifier",
 			input: "SELECT `1;2`; SELECT `3;4`;",
 			want: []InputStatement{
 				{
@@ -448,7 +448,7 @@ func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  `query has new line just before terminatoriter`,
+			desc:  `query has new line just before terminator`,
 			input: "SELECT '123'\n; SELECT '456'\n\\G",
 			want: []InputStatement{
 				{
@@ -525,11 +525,6 @@ func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 }
 
 func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
-	const (
-		terminatorHorizontal = `;`
-		terminatorVertical   = `\G`
-		terminatorUndefined  = ``
-	)
 	for _, tt := range []struct {
 		desc  string
 		input string
@@ -599,7 +594,7 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  "horizontal terminatoriter in string",
+			desc:  "horizontal terminator in string",
 			input: `SELECT "1;2;3"; SELECT 'TL;DR';`,
 			want: []string{
 				`SELECT "1;2;3"`,
@@ -607,7 +602,7 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  `vertical terminatoriter in string`,
+			desc:  `vertical terminator in string`,
 			input: `SELECT r"1\G2\G3"\G SELECT r'4\G5\G6'\G`,
 			want: []string{
 				`SELECT r"1\G2\G3"`,
@@ -615,7 +610,7 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  "terminatoriter in quoted identifier",
+			desc:  "terminator in quoted identifier",
 			input: "SELECT `1;2`; SELECT `3;4`;",
 			want: []string{
 				"SELECT `1;2`",
@@ -623,7 +618,7 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 			},
 		},
 		{
-			desc:  `query has new line just before terminatoriter`,
+			desc:  `query has new line just before terminator`,
 			input: "SELECT '123'\n; SELECT '456'\n\\G",
 			want: []string{
 				`SELECT '123'`,
@@ -668,6 +663,155 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
 			got := SeparateInputString(tt.input, `\G`)
+			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(InputStatement{})); diff != "" {
+				t.Errorf("difference in statements: (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestSeparateInputStringWithComments(t *testing.T) {
+	for _, tt := range []struct {
+		desc  string
+		input string
+		want  []string
+	}{
+		{
+			desc:  "single query",
+			input: `SELECT "123";`,
+			want: []string{
+				`SELECT "123"`,
+			},
+		},
+		{
+			desc:  "double queries",
+			input: `SELECT "123"; SELECT "456";`,
+			want: []string{
+				`SELECT "123"`,
+				`SELECT "456"`,
+			},
+		},
+		{
+			desc:  "quoted identifier",
+			input: "SELECT `1`, `2`; SELECT `3`, `4`;",
+			want: []string{
+				"SELECT `1`, `2`",
+				"SELECT `3`, `4`",
+			},
+		},
+		{
+			desc:  "vertical terminator",
+			input: `SELECT "123"\G`,
+			want: []string{
+				`SELECT "123"`,
+			},
+		},
+		{
+			desc:  "mixed terminator",
+			input: `SELECT "123"; SELECT "456"\G SELECT "789";`,
+			want: []string{
+				`SELECT "123"`,
+				`SELECT "456"`,
+				`SELECT "789"`,
+			},
+		},
+		{
+			desc:  "sql query",
+			input: `SELECT * FROM t1 WHERE id = "123" AND "456"; DELETE FROM t2 WHERE true;`,
+			want: []string{
+				`SELECT * FROM t1 WHERE id = "123" AND "456"`,
+				`DELETE FROM t2 WHERE true`,
+			},
+		},
+		{
+			desc:  "second query is empty",
+			input: `SELECT 1; ;`,
+			want: []string{
+				`SELECT 1`,
+				``,
+			},
+		},
+		{
+			desc:  "new line just after terminator",
+			input: "SELECT 1;\n SELECT 2\\G\n",
+			want: []string{
+				`SELECT 1`,
+				`SELECT 2`,
+			},
+		},
+		{
+			desc:  "horizontal terminator in string",
+			input: `SELECT "1;2;3"; SELECT 'TL;DR';`,
+			want: []string{
+				`SELECT "1;2;3"`,
+				`SELECT 'TL;DR'`,
+			},
+		},
+		{
+			desc:  `vertical terminator in string`,
+			input: `SELECT r"1\G2\G3"\G SELECT r'4\G5\G6'\G`,
+			want: []string{
+				`SELECT r"1\G2\G3"`,
+				`SELECT r'4\G5\G6'`,
+			},
+		},
+		{
+			desc:  "terminator in quoted identifier",
+			input: "SELECT `1;2`; SELECT `3;4`;",
+			want: []string{
+				"SELECT `1;2`",
+				"SELECT `3;4`",
+			},
+		},
+		{
+			desc:  `query has new line just before terminator`,
+			input: "SELECT '123'\n; SELECT '456'\n\\G",
+			want: []string{
+				`SELECT '123'`,
+				`SELECT '456'`,
+			},
+		},
+		{
+			desc:  `DDL`,
+			input: "CREATE t1 (\nId INT64 NOT NULL\n) PRIMARY KEY (Id);",
+			want: []string{
+				"CREATE t1 (\nId INT64 NOT NULL\n) PRIMARY KEY (Id)",
+			},
+		},
+		{
+			desc:  `statement with multiple comments`,
+			input: "# comment;\nSELECT /* comment */ 1; --comment\nSELECT 2;/* comment */",
+			want: []string{
+				"# comment;\nSELECT /* comment */ 1",
+				"--comment\nSELECT 2",
+				"/* comment */",
+			},
+		},
+		{
+			desc:  `only comments`,
+			input: "# comment;\n/* comment */--comment\n/* comment */",
+			want: []string{
+				"# comment;\n/* comment */--comment\n/* comment */",
+			},
+		},
+		{
+			desc:  `second query ends in the middle of string`,
+			input: `SELECT "123"; SELECT "45`,
+			want: []string{
+				`SELECT "123"`,
+				`SELECT "45`,
+			},
+		},
+		{
+			desc:  `totally incorrect query`,
+			input: `a"""""""""'''''''''b`,
+			want: []string{
+				`a"""""""""'''''''''b`,
+			},
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			got := SeparateInputStringWithComments(tt.input, `\G`)
 			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(InputStatement{})); diff != "" {
 				t.Errorf("difference in statements: (-want +got):\n%s", diff)
 			}

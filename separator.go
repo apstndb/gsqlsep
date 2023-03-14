@@ -34,7 +34,7 @@ type InputStatement struct {
 // By default, input will be separated by terminating semicolons `;`.
 // In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
 func SeparateInput(input string, customTerminators ...string) []InputStatement {
-	return newSeparator(input, customTerminators).separate()
+	return newSeparator(input, false, customTerminators).separate()
 }
 
 // SeparateInputString separates input for each statement and returns []string.
@@ -48,23 +48,37 @@ func SeparateInputString(input string, customTerminators ...string) []string {
 	return result
 }
 
+func SeparateInputWithComments(input string, customTerminators ...string) []InputStatement {
+	return newSeparator(input, true, customTerminators).separate()
+}
+
+func SeparateInputStringWithComments(input string, customTerminators ...string) []string {
+	var result []string
+	for _, s := range SeparateInputWithComments(input, customTerminators...) {
+		result = append(result, s.Statement)
+	}
+	return result
+}
+
 type separator struct {
 	str []rune // remaining input
 	sb  *strings.Builder
 	// terms is custom terminators.
 	// It isn't []string to minimize string-rune conversions.
-	terms [][]rune
+	terms            [][]rune
+	preserveComments bool
 }
 
-func newSeparator(s string, terms []string) *separator {
+func newSeparator(s string, preserveComment bool, terms []string) *separator {
 	var runeTerms [][]rune
 	for _, term := range terms {
 		runeTerms = append(runeTerms, []rune(term))
 	}
 	return &separator{
-		str:   []rune(s),
-		sb:    &strings.Builder{},
-		terms: runeTerms,
+		str:              []rune(s),
+		sb:               &strings.Builder{},
+		terms:            runeTerms,
+		preserveComments: preserveComment,
 	}
 }
 
@@ -186,6 +200,9 @@ func (s *separator) skipComments() {
 
 		// not terminated, but end of string
 		if i >= len(s.str) {
+			if s.preserveComments {
+				s.sb.WriteString(string(s.str))
+			}
 			s.str = s.str[len(s.str):]
 			return
 		}
@@ -193,12 +210,18 @@ func (s *separator) skipComments() {
 		for ; i < len(s.str); i++ {
 			if l := len(terminate); l == 1 {
 				if string(s.str[i]) == terminate {
+					if s.preserveComments {
+						s.sb.WriteString(string(s.str[:i+1]))
+					}
 					s.str = s.str[i+1:]
 					i = 0
 					break
 				}
 			} else if l == 2 {
 				if i+1 < len(s.str) && string(s.str[i:i+2]) == terminate {
+					if s.preserveComments {
+						s.sb.WriteString(string(s.str[:i+2]))
+					}
 					s.str = s.str[i+2:]
 					i = 0
 					break
@@ -208,6 +231,9 @@ func (s *separator) skipComments() {
 
 		// not terminated, but end of string
 		if i >= len(s.str) {
+			if s.preserveComments {
+				s.sb.WriteString(string(s.str))
+			}
 			s.str = s.str[len(s.str):]
 			return
 		}
