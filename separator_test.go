@@ -811,7 +811,7 @@ func TestSeparateInputStringWithComments(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			got := SeparateInputStringWithComments(tt.input, `\G`)
+			got := SeparateInputStringPreserveComments(tt.input, `\G`)
 			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(InputStatement{})); diff != "" {
 				t.Errorf("difference in statements: (-want +got):\n%s", diff)
 			}

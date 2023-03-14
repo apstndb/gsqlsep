@@ -31,6 +31,7 @@ type InputStatement struct {
 }
 
 // SeparateInput separates input for each statement and returns []InputStatement.
+// This function strip all comments in input.
 // By default, input will be separated by terminating semicolons `;`.
 // In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
 func SeparateInput(input string, customTerminators ...string) []InputStatement {
@@ -38,6 +39,7 @@ func SeparateInput(input string, customTerminators ...string) []InputStatement {
 }
 
 // SeparateInputString separates input for each statement and returns []string.
+// This function strip all comments in input.
 // By default, input will be separated by terminating semicolons `;`.
 // In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
 func SeparateInputString(input string, customTerminators ...string) []string {
@@ -48,13 +50,21 @@ func SeparateInputString(input string, customTerminators ...string) []string {
 	return result
 }
 
-func SeparateInputWithComments(input string, customTerminators ...string) []InputStatement {
+// SeparateInputPreserveComments separates input for each statement and returns []InputStatement.
+// This function preserve comments in input.
+// By default, input will be separated by terminating semicolons `;`.
+// In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
+func SeparateInputPreserveComments(input string, customTerminators ...string) []InputStatement {
 	return newSeparator(input, true, customTerminators).separate()
 }
 
-func SeparateInputStringWithComments(input string, customTerminators ...string) []string {
+// SeparateInputStringPreserveComments separates input for each statement and returns []string.
+// This function preserve comments in input.
+// By default, input will be separated by terminating semicolons `;`.
+// In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
+func SeparateInputStringPreserveComments(input string, customTerminators ...string) []string {
 	var result []string
-	for _, s := range SeparateInputWithComments(input, customTerminators...) {
+	for _, s := range SeparateInputPreserveComments(input, customTerminators...) {
 		result = append(result, s.Statement)
 	}
 	return result
