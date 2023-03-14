@@ -20,7 +20,15 @@ This is experimental and provided without warranty of any kind.
 
 The implementation of this package is almost a fork of [spanner-cli](https://github.com/cloudspannerecosystem/spanner-cli) which is derived from [spansql](https://github.com/googleapis/google-cloud-go/tree/spanner/v1.44.0/spanner/spansql).
 
-## Reference
+## References
+
+### Backgrounds
+
+Statement separators tend to be reinvented because there are no reusable implementations.
+
+- https://github.com/cloudspannerecosystem/spanner-cli/pull/34
+
+### Language Specifications
 
 - https://github.com/google/zetasql/blob/master/docs/lexical.md
 - https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
