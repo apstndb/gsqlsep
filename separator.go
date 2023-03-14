@@ -129,15 +129,8 @@ func (s *separator) consumeStringContent(delim string, raw bool) {
 	var i int
 	for i < len(s.str) {
 		// check end of string
-		switch {
-		// check single-quoted delim
-		case len(delim) == 1 && string(s.str[i]) == delim:
-			s.str = s.str[i+1:]
-			s.sb.WriteString(delim)
-			return
-		// check triple-quoted delim
-		case len(delim) == 3 && len(s.str) >= i+3 && string(s.str[i:i+3]) == delim:
-			s.str = s.str[i+3:]
+		if hasStringPrefix(s.str[i:], delim) {
+			s.str = s.str[i+len(delim):]
 			s.sb.WriteString(delim)
 			return
 		}
@@ -172,10 +165,9 @@ func (s *separator) consumeStringContent(delim string, raw bool) {
 func (s *separator) consumeStringDelimiter() string {
 	c := s.str[0]
 	// check triple-quoted delim
-	if len(s.str) >= 3 && s.str[1] == c && s.str[2] == c {
-		delim := strings.Repeat(string(c), 3)
+	if delim := strings.Repeat(string(c), 3); hasStringPrefix(s.str, delim) {
 		s.sb.WriteString(delim)
-		s.str = s.str[3:]
+		s.str = s.str[len(delim):]
 		return delim
 	}
 	s.str = s.str[1:]
@@ -187,20 +179,20 @@ func (s *separator) skipComments() {
 	var i int
 	for i < len(s.str) {
 		var terminate string
-		if s.str[i] == '#' {
+		if prefix := "#"; hasStringPrefix(s.str, prefix) {
 			// single line comment "#"
 			terminate = "\n"
-			i++
-		} else if i+1 < len(s.str) && s.str[i] == '-' && s.str[i+1] == '-' {
+			i += len(prefix)
+		} else if prefix := "--"; hasStringPrefix(s.str, prefix) {
 			// single line comment "--"
 			terminate = "\n"
-			i += 2
-		} else if i+1 < len(s.str) && s.str[i] == '/' && s.str[i+1] == '*' {
+			i += len(prefix)
+		} else if prefix := "/*"; hasStringPrefix(s.str, prefix) {
 			// multi line comments "/* */"
 			// NOTE: Nested multiline comments are not supported in Spanner.
 			// https://cloud.google.com/spanner/docs/lexical#multiline_comments
 			terminate = "*/"
-			i += 2
+			i += len(prefix)
 		}
 
 		// no comment found
@@ -209,42 +201,31 @@ func (s *separator) skipComments() {
 		}
 
 		// not terminated, but end of string
-		if i >= len(s.str) {
+		if lenStr := len(s.str); i >= lenStr {
 			if s.preserveComments {
 				s.sb.WriteString(string(s.str))
 			}
-			s.str = s.str[len(s.str):]
+			s.str = s.str[lenStr:]
 			return
 		}
 
 		for ; i < len(s.str); i++ {
-			if l := len(terminate); l == 1 {
-				if string(s.str[i]) == terminate {
-					if s.preserveComments {
-						s.sb.WriteString(string(s.str[:i+1]))
-					}
-					s.str = s.str[i+1:]
-					i = 0
-					break
+			if lenT := len(terminate); hasStringPrefix(s.str[i:], terminate) {
+				if s.preserveComments {
+					s.sb.WriteString(string(s.str[:i+lenT]))
 				}
-			} else if l == 2 {
-				if i+1 < len(s.str) && string(s.str[i:i+2]) == terminate {
-					if s.preserveComments {
-						s.sb.WriteString(string(s.str[:i+2]))
-					}
-					s.str = s.str[i+2:]
-					i = 0
-					break
-				}
+				s.str = s.str[i+lenT:]
+				i = 0
+				break
 			}
 		}
 
 		// not terminated, but end of string
-		if i >= len(s.str) {
+		if lenStr := len(s.str); i >= lenStr {
 			if s.preserveComments {
 				s.sb.WriteString(string(s.str))
 			}
-			s.str = s.str[len(s.str):]
+			s.str = s.str[lenStr:]
 			return
 		}
 	}
@@ -347,4 +328,8 @@ func (s *separator) separate() []InputStatement {
 
 func hasPrefix(s, prefix []rune) bool {
 	return len(s) >= len(prefix) && slices.Equal(s[0:len(prefix)], prefix)
+}
+
+func hasStringPrefix(s []rune, prefix string) bool {
+	return hasPrefix(s, []rune(prefix))
 }
