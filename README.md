@@ -12,6 +12,7 @@ This is experimental and provided without warranty of any kind.
   - Query syntax changes will not break user codes.
   - It is conceptually an implementation of the [Google SQL lexical structure](https://github.com/google/zetasql/blob/master/docs/lexical.md).
 - Strip comments to support Cloud Spanner Admin API, which doesn't support comments in DDL.
+  - (Experimental) Can preserve comments using `SeparateInputPreserveComments`, `SeparateInputStringPreserveComments`.
 - (Experimental) Alternative termination characters are customizable.
   - It is possible to support spanner-cli style command terminators `\G`.
     - Example: `SELECT 1\G`
