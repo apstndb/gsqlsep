@@ -193,10 +193,8 @@ func (s *separator) skipComments() {
 			// https://cloud.google.com/spanner/docs/lexical#multiline_comments
 			terminate = "*/"
 			i += len(prefix)
-		}
-
-		// no comment found
-		if terminate == "" {
+		} else {
+			// out of comment
 			return
 		}
 
@@ -213,6 +211,9 @@ func (s *separator) skipComments() {
 			if lenT := len(terminate); hasStringPrefix(s.str[i:], terminate) {
 				if s.preserveComments {
 					s.sb.WriteString(string(s.str[:i+lenT]))
+				} else {
+					// always replace a comment to a single whitespace.
+					s.sb.WriteRune(' ')
 				}
 				s.str = s.str[i+lenT:]
 				i = 0

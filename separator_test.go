@@ -476,7 +476,7 @@ func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 			input: "# comment;\nSELECT /* comment */ 1; --comment\nSELECT 2;/* comment */",
 			want: []InputStatement{
 				{
-					Statement:  "SELECT  1",
+					Statement:  "SELECT   1",
 					Terminator: terminatorHorizontal,
 				},
 				{
@@ -636,7 +636,7 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 			desc:  `statement with multiple comments`,
 			input: "# comment;\nSELECT /* comment */ 1; --comment\nSELECT 2;/* comment */",
 			want: []string{
-				"SELECT  1",
+				"SELECT   1",
 				"SELECT 2",
 			},
 		},
@@ -658,6 +658,15 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 			input: `a"""""""""'''''''''b`,
 			want: []string{
 				`a"""""""""'''''''''b`,
+			},
+		},
+		{
+			desc:  `statements with edge case comments`,
+			input: "SELECT 0x1/* comment */A; SELECT 0x2--\nB; SELECT 0x3#\nC",
+			want: []string{
+				"SELECT 0x1 A",
+				"SELECT 0x2 B",
+				"SELECT 0x3 C",
 			},
 		},
 	} {
@@ -807,6 +816,15 @@ func TestSeparateInputStringWithComments(t *testing.T) {
 			input: `a"""""""""'''''''''b`,
 			want: []string{
 				`a"""""""""'''''''''b`,
+			},
+		},
+		{
+			desc:  `statements with edge case comments`,
+			input: "SELECT 0x1/* comment */A; SELECT 0x2--\nB; SELECT 0x3#\nC",
+			want: []string{
+				"SELECT 0x1/* comment */A",
+				"SELECT 0x2--\nB",
+				"SELECT 0x3#\nC",
 			},
 		},
 	} {
