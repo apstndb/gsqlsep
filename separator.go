@@ -31,15 +31,17 @@ type InputStatement struct {
 }
 
 func (stmt *InputStatement) StripComments() InputStatement {
-	if stmt.Statement == "" {
+	result := SeparateInputString(stmt.Statement)
+	if len(result) == 0 {
 		return InputStatement{
 			Statement:  "",
 			Terminator: stmt.Terminator,
 		}
 	}
+
 	// It can assume InputStatement.Statement doesn't have any terminating characters.
 	return InputStatement{
-		Statement:  SeparateInputString(stmt.Statement)[0],
+		Statement:  result[0],
 		Terminator: stmt.Terminator,
 	}
 }

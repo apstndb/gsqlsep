@@ -855,6 +855,17 @@ func TestInputStatement_StripComments(t *testing.T) {
 			},
 		},
 		{
+			desc: "only comments",
+			input: InputStatement{
+				Statement:  "# comment;\n/* comment */--comment\n/* comment */",
+				Terminator: "",
+			},
+			want: InputStatement{
+				Statement:  "",
+				Terminator: "",
+			},
+		},
+		{
 			desc: "single line comment",
 			input: InputStatement{
 				Statement:  "SELECT 1 -- test",
