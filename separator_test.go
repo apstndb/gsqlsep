@@ -836,3 +836,75 @@ func TestSeparateInputStringWithComments(t *testing.T) {
 		})
 	}
 }
+
+func TestInputStatement_StripComments(t *testing.T) {
+	for _, tt := range []struct {
+		desc  string
+		input InputStatement
+		want  InputStatement
+	}{
+		{
+			desc: "empty statement",
+			input: InputStatement{
+				Statement:  "",
+				Terminator: "",
+			},
+			want: InputStatement{
+				Statement:  "",
+				Terminator: "",
+			},
+		},
+		{
+			desc: "single line comment",
+			input: InputStatement{
+				Statement:  "SELECT 1 -- test",
+				Terminator: "",
+			},
+			want: InputStatement{
+				Statement:  "SELECT 1",
+				Terminator: "",
+			},
+		},
+		{
+			desc: "comment as token separator",
+			input: InputStatement{
+				Statement:  "SELECT 0x1/* comment */A",
+				Terminator: "",
+			},
+			want: InputStatement{
+				Statement:  "SELECT 0x1 A",
+				Terminator: "",
+			},
+		},
+		{
+			desc: "should preserve terminator",
+			input: InputStatement{
+				Statement:  "SELECT 1",
+				Terminator: ";",
+			},
+			want: InputStatement{
+				Statement:  "SELECT 1",
+				Terminator: ";",
+			},
+		},
+		{
+			desc: "should preserve custom terminator",
+			input: InputStatement{
+				Statement:  "SELECT 1",
+				Terminator: `\G`,
+			},
+			want: InputStatement{
+				Statement:  "SELECT 1",
+				Terminator: `\G`,
+			},
+		},
+	} {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			got := tt.input.StripComments()
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("difference in statements: (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

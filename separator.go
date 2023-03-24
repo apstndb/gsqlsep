@@ -30,6 +30,20 @@ type InputStatement struct {
 	Terminator string
 }
 
+func (stmt *InputStatement) StripComments() InputStatement {
+	if stmt.Statement == "" {
+		return InputStatement{
+			Statement:  "",
+			Terminator: stmt.Terminator,
+		}
+	}
+	// It can assume InputStatement.Statement doesn't have any terminating characters.
+	return InputStatement{
+		Statement:  SeparateInputString(stmt.Statement)[0],
+		Terminator: stmt.Terminator,
+	}
+}
+
 // SeparateInput separates input for each statement and returns []InputStatement.
 // This function strip all comments in input.
 // By default, input will be separated by terminating semicolons `;`.
