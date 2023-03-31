@@ -669,6 +669,32 @@ func TestSeparateInputString_SpannerCliCompatible(t *testing.T) {
 				"SELECT 0x3 C",
 			},
 		},
+		{
+			desc: `BigQuery JavaScript UDF`,
+			input: `CREATE TEMP FUNCTION myFunc(a FLOAT64, b STRING)
+RETURNS STRING
+LANGUAGE js
+  OPTIONS (
+    library=['gs://my-bucket/path/to/lib1.js', 'gs://my-bucket/path/to/lib2.js'])
+AS r"""
+  // Assumes 'doInterestingStuff' is defined in one of the library files.
+  return doInterestingStuff(a, b);
+""";
+
+SELECT myFunc(3.14, 'foo');`,
+			want: []string{
+				`CREATE TEMP FUNCTION myFunc(a FLOAT64, b STRING)
+RETURNS STRING
+LANGUAGE js
+  OPTIONS (
+    library=['gs://my-bucket/path/to/lib1.js', 'gs://my-bucket/path/to/lib2.js'])
+AS r"""
+  // Assumes 'doInterestingStuff' is defined in one of the library files.
+  return doInterestingStuff(a, b);
+"""`,
+				"SELECT myFunc(3.14, 'foo')",
+			},
+		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
 			got := SeparateInputString(tt.input, `\G`)
@@ -825,6 +851,32 @@ func TestSeparateInputStringWithComments(t *testing.T) {
 				"SELECT 0x1/* comment */A",
 				"SELECT 0x2--\nB",
 				"SELECT 0x3#\nC",
+			},
+		},
+		{
+			desc: `BigQuery JavaScript UDF`,
+			input: `CREATE TEMP FUNCTION myFunc(a FLOAT64, b STRING)
+RETURNS STRING
+LANGUAGE js
+  OPTIONS (
+    library=['gs://my-bucket/path/to/lib1.js', 'gs://my-bucket/path/to/lib2.js'])
+AS r"""
+  // Assumes 'doInterestingStuff' is defined in one of the library files.
+  return doInterestingStuff(a, b);
+""";
+
+SELECT myFunc(3.14, 'foo');`,
+			want: []string{
+				`CREATE TEMP FUNCTION myFunc(a FLOAT64, b STRING)
+RETURNS STRING
+LANGUAGE js
+  OPTIONS (
+    library=['gs://my-bucket/path/to/lib1.js', 'gs://my-bucket/path/to/lib2.js'])
+AS r"""
+  // Assumes 'doInterestingStuff' is defined in one of the library files.
+  return doInterestingStuff(a, b);
+"""`,
+				"SELECT myFunc(3.14, 'foo')",
 			},
 		},
 	} {
