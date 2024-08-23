@@ -80,11 +80,11 @@ func SeparateInputPreserveComments(input string, customTerminators ...string) []
 	return stmts
 }
 
-// SeparateInputPreserveCommentsWithCurrentDelimiter separates input for each statement and returns []InputStatement.
+// SeparateInputPreserveCommentsWithStatus separates input for each statement and returns []InputStatement and Status.
 // This function preserve comments in input.
 // By default, input will be separated by terminating semicolons `;`.
 // In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
-func SeparateInputPreserveCommentsWithParserStatus(input string, customTerminators ...string) ([]InputStatement, Status) {
+func SeparateInputPreserveCommentsWithStatus(input string, customTerminators ...string) ([]InputStatement, Status) {
 	stmts, currentDelimiter := newSeparator(input, true, customTerminators).separate()
 	return stmts, Status{WaitingString: currentDelimiter}
 }
