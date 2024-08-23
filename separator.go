@@ -30,6 +30,10 @@ type InputStatement struct {
 	Terminator string
 }
 
+type Status struct {
+	WaitingString string
+}
+
 func (stmt *InputStatement) StripComments() InputStatement {
 	result := SeparateInputString(stmt.Statement)
 	if len(result) == 0 {
@@ -51,7 +55,8 @@ func (stmt *InputStatement) StripComments() InputStatement {
 // By default, input will be separated by terminating semicolons `;`.
 // In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
 func SeparateInput(input string, customTerminators ...string) []InputStatement {
-	return newSeparator(input, false, customTerminators).separate()
+	stmts, _ := newSeparator(input, false, customTerminators).separate()
+	return stmts
 }
 
 // SeparateInputString separates input for each statement and returns []string.
@@ -71,7 +76,17 @@ func SeparateInputString(input string, customTerminators ...string) []string {
 // By default, input will be separated by terminating semicolons `;`.
 // In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
 func SeparateInputPreserveComments(input string, customTerminators ...string) []InputStatement {
-	return newSeparator(input, true, customTerminators).separate()
+	stmts, _ := newSeparator(input, true, customTerminators).separate()
+	return stmts
+}
+
+// SeparateInputPreserveCommentsWithCurrentDelimiter separates input for each statement and returns []InputStatement.
+// This function preserve comments in input.
+// By default, input will be separated by terminating semicolons `;`.
+// In addition, customTerminators can be passed, and they will be treated as terminating semicolons.
+func SeparateInputPreserveCommentsWithParserStatus(input string, customTerminators ...string) ([]InputStatement, Status) {
+	stmts, currentDelimiter := newSeparator(input, true, customTerminators).separate()
+	return stmts, Status{WaitingString: currentDelimiter}
 }
 
 // SeparateInputStringPreserveComments separates input for each statement and returns []string.
@@ -93,6 +108,7 @@ type separator struct {
 	// It isn't []string to minimize string-rune conversions.
 	terms            [][]rune
 	preserveComments bool
+	currentDelimiter string
 }
 
 func newSeparator(s string, preserveComment bool, terms []string) *separator {
@@ -148,6 +164,7 @@ func (s *separator) consumeStringContent(delim string, raw bool) {
 		if hasStringPrefix(s.str[i:], delim) {
 			s.str = s.str[i+len(delim):]
 			s.sb.WriteString(delim)
+			s.currentDelimiter = ""
 			return
 		}
 
@@ -163,6 +180,7 @@ func (s *separator) consumeStringContent(delim string, raw bool) {
 			// invalid escape sequence
 			if i+1 >= len(s.str) {
 				s.sb.WriteRune('\\')
+				s.currentDelimiter = delim
 				return
 			}
 
@@ -175,6 +193,7 @@ func (s *separator) consumeStringContent(delim string, raw bool) {
 		i++
 	}
 	s.str = s.str[i:]
+	s.currentDelimiter = delim
 	return
 }
 
@@ -208,6 +227,7 @@ func (s *separator) skipComments() {
 			// NOTE: Nested multiline comments are not supported in Spanner.
 			// https://cloud.google.com/spanner/docs/lexical#multiline_comments
 			terminate = "*/"
+			s.currentDelimiter = terminate
 			i += len(prefix)
 		} else {
 			// out of comment
@@ -233,6 +253,7 @@ func (s *separator) skipComments() {
 				}
 				s.str = s.str[i+lenT:]
 				i = 0
+				s.currentDelimiter = ""
 				break
 			}
 		}
@@ -253,7 +274,7 @@ func (s *separator) skipComments() {
 //
 // NOTE: Logic for parsing a statement is mostly taken from spansql.
 // https://github.com/googleapis/google-cloud-go/blob/master/spanner/spansql/parser.go
-func (s *separator) separate() []InputStatement {
+func (s *separator) separate() ([]InputStatement, string) {
 	var statements []InputStatement
 	for len(s.str) > 0 {
 		s.skipComments()
@@ -340,7 +361,7 @@ func (s *separator) separate() []InputStatement {
 			s.sb.Reset()
 		}
 	}
-	return statements
+	return statements, s.currentDelimiter
 }
 
 func hasPrefix(s, prefix []rune) bool {
