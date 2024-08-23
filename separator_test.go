@@ -286,6 +286,162 @@ func TestSeparatorConsumeRawBytesString(t *testing.T) {
 	}
 }
 
+func TestSeparateInputPreserveCommentsWithStatus(t *testing.T) {
+	const (
+		terminatorHorizontal = `;`
+		terminatorVertical   = `\G`
+		terminatorUndefined  = ``
+	)
+	for _, tt := range []struct {
+		desc       string
+		input      string
+		want       []InputStatement
+		wantStatus Status
+	}{
+		{
+			desc:  "closed double quoted",
+			input: `SELECT "123"`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT "123"`,
+					Terminator: terminatorUndefined,
+				},
+			},
+		},
+		{
+			desc:  "non-closed double quoted",
+			input: `SELECT "123`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT "123`,
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{`"`},
+		},
+		{
+			desc:  "non-closed single quoted",
+			input: `SELECT '123`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT '123`,
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{`'`},
+		},
+		{
+			desc:  "closed single quoted",
+			input: `SELECT '123'`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT '123'`,
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{``},
+		},
+		{
+			desc:  "non-closed back quoted",
+			input: "SELECT `123",
+			want: []InputStatement{
+				{
+					Statement:  "SELECT `123",
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{"`"},
+		},
+		{
+			desc:  "closed back quoted",
+			input: "SELECT `123`",
+			want: []InputStatement{
+				{
+					Statement:  "SELECT `123`",
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{""},
+		},
+		{
+			desc:  "closed comment",
+			input: "SELECT /*123*/",
+			want: []InputStatement{
+				{
+					Statement:  "SELECT /*123*/",
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{""},
+		},
+		{
+			desc:  "closed comment",
+			input: "SELECT /*123",
+			want: []InputStatement{
+				{
+					Statement:  "SELECT /*123",
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{"*/"},
+		},
+		{
+			desc:  "non-closed triple double quoted",
+			input: `SELECT """123`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT """123`,
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{`"""`},
+		},
+		{
+			desc:  "closed triple double quoted",
+			input: `SELECT """123"""`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT """123"""`,
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{``},
+		},
+		{
+			desc:  "non-closed triple single quoted",
+			input: `SELECT '''123`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT '''123`,
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{`'''`},
+		},
+		{
+			desc:  "closed triple single quoted",
+			input: `SELECT '''123'''`,
+			want: []InputStatement{
+				{
+					Statement:  `SELECT '''123'''`,
+					Terminator: terminatorUndefined,
+				},
+			},
+			wantStatus: Status{``},
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			got, gotStatus := SeparateInputPreserveCommentsWithParserStatus(tt.input)
+			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(InputStatement{})); diff != "" {
+				t.Errorf("difference in statements: (-want +got):\n%s", diff)
+			}
+			if diff := cmp.Diff(tt.wantStatus, gotStatus); diff != "" {
+				t.Errorf("difference in status: (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestSeparateInput_SpannerCliCompatible(t *testing.T) {
 	const (
 		terminatorHorizontal = `;`
